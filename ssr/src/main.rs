@@ -20,29 +20,15 @@ fn main() -> Result<()> {
         query,
         "Business Unit".to_string(),
         "averageKwhByHour".to_string(),
+        2023,
+        2,
     );
 
-    println!("{:#?}", asset_list);
+    //println!("{:#?}", asset_list);
 
-    let year = 2023;
-    let month = 2;
-
-    let num_of_days = NaiveDate::from_ymd_opt(
-        match month {
-            12 => year + 1,
-            _ => year,
-        },
-        match month {
-            12 => 1,
-            _ => month + 1,
-        },
-        1,
-    )
-    .expect("Invalid date")
-    .signed_duration_since(NaiveDate::from_ymd_opt(year, month, 1).expect("Invalid date"))
-    .num_days();
-
-    println!("Number of days: {}", num_of_days);
+    let d = "2023-02-01T00:00:00.000";
+    let pd = NaiveDate::parse_from_str(d, "%Y-%m-%dT%H:%M:%S%.f")?;
+    info!("DEBUG parsed time: {}", pd.to_string());
 
     Ok(())
 }

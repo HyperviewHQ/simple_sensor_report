@@ -10,6 +10,7 @@ use thiserror::Error;
 const ASSET_API_PREFIX: &str = "/api/asset/assets";
 const ASSET_CUSTOM_PROPERTIES: &str = "/api/asset/customAssetProperties";
 const ASSET_SENSORS: &str = "/api/asset/sensors";
+const ASSET_NUMERIC_SENSOR_DAILY_SUMMARY: &str = "/api/asset/sensorsDailySummaries/numeric";
 
 #[derive(Debug, Error)]
 enum SsrError {
@@ -76,6 +77,8 @@ pub fn get_asset_list(
     query: String,
     custom_property: String,
     sensor_name: String,
+    year: i32,
+    month: u32,
 ) -> Result<Vec<BasicAsset>> {
     // Get Authorization header for request
     let auth_header = get_auth_header(config)?;
@@ -91,7 +94,7 @@ pub fn get_asset_list(
     // Start http client
     let req = reqwest::blocking::Client::new();
 
-    // Get response and response
+    // Get response
     let resp = req
         .get(target_url)
         .header(AUTHORIZATION, auth_header)
@@ -136,6 +139,9 @@ pub fn get_asset_list(
     info!("Getting sensor ids");
     get_asset_sensors(config, &mut basic_assets, sensor_name)?;
 
+    info!("Getting sensor data for month");
+    get_numeric_sensor_monthly_summary(config, &mut basic_assets, year, month)?;
+
     Ok(basic_assets)
 }
 
@@ -159,7 +165,7 @@ fn get_asset_custom_properties(
         // Start http client
         let req = reqwest::blocking::Client::new();
 
-        // Get response and response
+        // Get response
         let resp = req
             .get(target_url)
             .header(AUTHORIZATION, auth_header.clone())
@@ -196,7 +202,7 @@ fn get_asset_sensors(
         // Start http client
         let req = reqwest::blocking::Client::new();
 
-        // Get response and response
+        // Get response
         let resp = req
             .get(target_url)
             .header(AUTHORIZATION, auth_header.clone())
@@ -231,22 +237,69 @@ fn get_asset_sensors(
     Ok(())
 }
 
-// http://devvm2.yvrlab.internal/api/asset/sensorsDailySummaries/numeric?sensorIds=fb96aa61-b090-4c3c-ae05-247432b3c3a1&sensorIds=2b7d5cad-5b24-4929-9ad0-94d0135b268e&startTime=2023-02-01T00%3A00%3A00.000&endTime=2023-03-01T00%3A00%3A00.000
-fn get_sensor_monthly_summary(
+fn get_numeric_sensor_monthly_summary(
     config: &AppConfig,
     asset_list: &mut Vec<BasicAsset>,
     year: i32,
     month: u32,
 ) -> Result<()> {
+    let end = get_next_date(year, month)?;
+
     // Get Authorization header for request
     let auth_header = get_auth_header(config)?;
     debug!("Auth header: {}", auth_header);
 
+    // format target
+    let target_url = format!(
+        "{}{}",
+        config.instance_url, ASSET_NUMERIC_SENSOR_DAILY_SUMMARY
+    );
+    debug!("Target URL: {:?}", target_url);
+
+    // Start http client
+    let req = reqwest::blocking::Client::new();
+
+    let mut query: Vec<(String, String)> = Vec::new();
+
+    for asset in asset_list {
+        if let Some(sensor_id) = &asset.sensor_id {
+            query.push(("sensorIds".to_string(), sensor_id.to_string()));
+        }
+    }
+
+    let start_time = format!("{}-{}-1T00:00:00.000", year, month);
+    let end_time = format!("{}T00:00:00.000", end.format("%Y-%m-%d").to_string());
+
+    query.push(("startTime".to_string(), start_time));
+    query.push(("endTime".to_string(), end_time));
+    trace!("{:#?}", query);
+
+    // Get response
+    let resp = req
+        .get(target_url.clone())
+        .header(AUTHORIZATION, auth_header.clone())
+        .header(CONTENT_TYPE, "application/json")
+        .header(ACCEPT, "application/json")
+        .query(&query)
+        .send()?
+        .json::<Vec<NumericSensorResponse>>()?;
+
+    trace!("{:#?}", resp);
+
     Ok(())
 }
 
-fn get_next_month(year: i32, month: u32) -> Result<i64> {
+fn get_number_of_days_in_month(year: i32, month: u32) -> Result<i64> {
     if let Some(start) = NaiveDate::from_ymd_opt(year, month, 1) {
+        let end = get_next_date(year, month)?;
+        Ok(end.signed_duration_since(start).num_days())
+    } else {
+        Err(SsrError::YearMonthConversionError.into())
+    }
+}
+
+fn get_next_date(year: i32, month: u32) -> Result<NaiveDate> {
+    if let Some(_start) = NaiveDate::from_ymd_opt(year, month, 1) {
         let e_year = match month {
             12 => year + 1,
             _ => year,
@@ -257,9 +310,7 @@ fn get_next_month(year: i32, month: u32) -> Result<i64> {
             _ => month + 1,
         };
 
-        let end = NaiveDate::from_ymd_opt(e_year, e_month, 1).unwrap();
-
-        Ok(end.signed_duration_since(start).num_days())
+        Ok(NaiveDate::from_ymd_opt(e_year, e_month, 1).unwrap())
     } else {
         Err(SsrError::YearMonthConversionError.into())
     }
