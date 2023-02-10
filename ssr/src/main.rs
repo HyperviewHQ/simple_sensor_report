@@ -24,7 +24,7 @@ fn main() -> Result<()> {
         2,
     );
 
-    //println!("{:#?}", asset_list);
+    println!("{:#?}", asset_list);
 
     let d = "2023-02-01T00:00:00.000";
     let pd = NaiveDate::parse_from_str(d, "%Y-%m-%dT%H:%M:%S%.f")?;

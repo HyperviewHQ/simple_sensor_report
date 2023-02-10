@@ -28,6 +28,7 @@ pub struct BasicAsset {
     pub sensor_name: Option<String>,
     pub sensor_id: Option<String>,
     pub sensor_unit: Option<String>,
+    pub sensor_data_points: Vec<NumericSensorDailySummaryDataPoint>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -63,8 +64,8 @@ struct NumericSensorResponse {
     sensor_data_points: Vec<NumericSensorDailySummaryDataPoint>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct NumericSensorDailySummaryDataPoint {
+#[derive(Debug, Deserialize, Serialize, Default, Clone)]
+pub struct NumericSensorDailySummaryDataPoint {
     r: String,
     avg: f64,
     max: f64,
@@ -140,7 +141,8 @@ pub fn get_asset_list(
     get_asset_sensors(config, &mut basic_assets, sensor_name)?;
 
     info!("Getting sensor data for month");
-    get_numeric_sensor_monthly_summary(config, &mut basic_assets, year, month)?;
+    let sensor_data = get_numeric_sensor_monthly_summary(config, &mut basic_assets, year, month)?;
+    map_sensor_data_to_asset(&mut basic_assets, &sensor_data);
 
     Ok(basic_assets)
 }
@@ -242,7 +244,7 @@ fn get_numeric_sensor_monthly_summary(
     asset_list: &mut Vec<BasicAsset>,
     year: i32,
     month: u32,
-) -> Result<()> {
+) -> Result<Vec<NumericSensorResponse>> {
     let end = get_next_date(year, month)?;
 
     // Get Authorization header for request
@@ -277,7 +279,7 @@ fn get_numeric_sensor_monthly_summary(
     // Get response
     let resp = req
         .get(target_url.clone())
-        .header(AUTHORIZATION, auth_header.clone())
+        .header(AUTHORIZATION, auth_header)
         .header(CONTENT_TYPE, "application/json")
         .header(ACCEPT, "application/json")
         .query(&query)
@@ -286,9 +288,26 @@ fn get_numeric_sensor_monthly_summary(
 
     trace!("{:#?}", resp);
 
-    Ok(())
+    Ok(resp)
 }
 
+fn map_sensor_data_to_asset(asset_list: &mut Vec<BasicAsset>, sensor_data: &Vec<NumericSensorResponse>) {
+    for asset in asset_list {
+        if let Some(sensor_id) = &asset.sensor_id {
+            let numeric_sensor_response: Vec<_> = sensor_data.iter()
+                .filter(|s| s.sensor_id == *sensor_id)
+                .collect();
+
+            // only one response is expected
+            // TODO: refactor to return Err if the number of returned results is unexpected
+            if numeric_sensor_response.len() > 0 {
+                asset.sensor_data_points = numeric_sensor_response[0].sensor_data_points.clone();
+            }
+        }
+    }
+}
+
+/*
 fn get_number_of_days_in_month(year: i32, month: u32) -> Result<i64> {
     if let Some(start) = NaiveDate::from_ymd_opt(year, month, 1) {
         let end = get_next_date(year, month)?;
@@ -297,6 +316,7 @@ fn get_number_of_days_in_month(year: i32, month: u32) -> Result<i64> {
         Err(SsrError::YearMonthConversionError.into())
     }
 }
+*/
 
 fn get_next_date(year: i32, month: u32) -> Result<NaiveDate> {
     if let Some(_start) = NaiveDate::from_ymd_opt(year, month, 1) {
