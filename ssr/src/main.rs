@@ -1,14 +1,40 @@
 use anyhow::Result;
 use chrono::NaiveDate;
+use clap::{builder::PossibleValuesParser, Arg, ArgAction, Command};
 use hyperview::cli::AppConfig;
-use log::{info, trace};
+use log::{info, trace, LevelFilter};
 
 use crate::hyperview::{api::get_asset_list, cli::get_config_path};
 
 mod hyperview;
 
 fn main() -> Result<()> {
-    env_logger::init();
+    let args = Command::new("SSR")
+        .author("Hyperview Technologies Ltd.")
+        .about("Does awesome things")
+        .arg(
+            Arg::new("debug-level")
+                .short('d')
+                .long("debug-level")
+                .action(ArgAction::Set)
+                .default_value("info")
+                .required(false)
+                .help("Set debug level")
+                .ignore_case(false)
+                .value_parser(PossibleValuesParser::new([
+                    "trace", "debug", "info", "warn", "error",
+                ])),
+        )
+        .get_matches();
+
+    if let Some(debug_level) = args.get_one::<String>("debug-level") {
+        let level_filter = get_debug_filter(debug_level);
+
+        env_logger::builder().filter(None, level_filter).init();
+    } else {
+        env_logger::init();
+    };
+
     info!("Starting ssr");
 
     let config: AppConfig = confy::load_path(get_config_path())?;
@@ -31,4 +57,18 @@ fn main() -> Result<()> {
     info!("DEBUG parsed time: {}", pd.to_string());
 
     Ok(())
+}
+
+fn get_debug_filter(debug_level: &String) -> LevelFilter {
+    if debug_level == "error" {
+        LevelFilter::Error
+    } else if debug_level == "warn" {
+        LevelFilter::Warn
+    } else if debug_level == "debug" {
+        LevelFilter::Debug
+    } else if debug_level == "trace" {
+        LevelFilter::Trace
+    } else {
+        LevelFilter::Info
+    }
 }

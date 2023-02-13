@@ -291,10 +291,14 @@ fn get_numeric_sensor_monthly_summary(
     Ok(resp)
 }
 
-fn map_sensor_data_to_asset(asset_list: &mut Vec<BasicAsset>, sensor_data: &Vec<NumericSensorResponse>) {
+fn map_sensor_data_to_asset(
+    asset_list: &mut Vec<BasicAsset>,
+    sensor_data: &Vec<NumericSensorResponse>,
+) {
     for asset in asset_list {
         if let Some(sensor_id) = &asset.sensor_id {
-            let numeric_sensor_response: Vec<_> = sensor_data.iter()
+            let numeric_sensor_response: Vec<_> = sensor_data
+                .iter()
                 .filter(|s| s.sensor_id == *sensor_id)
                 .collect();
 
