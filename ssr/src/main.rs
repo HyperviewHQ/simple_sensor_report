@@ -1,31 +1,17 @@
 use anyhow::Result;
 use chrono::NaiveDate;
-use clap::{builder::PossibleValuesParser, Arg, ArgAction, Command};
 use hyperview::cli::AppConfig;
 use log::{info, trace, LevelFilter};
 
-use crate::hyperview::{api::get_asset_list, cli::get_config_path};
+use crate::hyperview::{
+    api::get_asset_list,
+    cli::{get_args, get_config_path},
+};
 
 mod hyperview;
 
 fn main() -> Result<()> {
-    let args = Command::new("SSR")
-        .author("Hyperview Technologies Ltd.")
-        .about("Does awesome things")
-        .arg(
-            Arg::new("debug-level")
-                .short('d')
-                .long("debug-level")
-                .action(ArgAction::Set)
-                .default_value("info")
-                .required(false)
-                .help("Set debug level")
-                .ignore_case(false)
-                .value_parser(PossibleValuesParser::new([
-                    "trace", "debug", "info", "warn", "error",
-                ])),
-        )
-        .get_matches();
+    let args = get_args();
 
     if let Some(debug_level) = args.get_one::<String>("debug-level") {
         let level_filter = get_debug_filter(debug_level);
@@ -50,7 +36,7 @@ fn main() -> Result<()> {
         2,
     );
 
-    println!("{:#?}", asset_list);
+    trace!("{:#?}", asset_list);
 
     let d = "2023-02-01T00:00:00.000";
     let pd = NaiveDate::parse_from_str(d, "%Y-%m-%dT%H:%M:%S%.f")?;

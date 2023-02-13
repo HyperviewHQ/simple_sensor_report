@@ -10,8 +10,8 @@ pub fn get_auth_header(config: &AppConfig) -> Result<String> {
     let client = BasicClient::new(
         ClientId::new(config.client_id.clone()),
         Some(ClientSecret::new(config.client_secret.clone())),
-        AuthUrl::new(config.auth_url.clone()).unwrap(),
-        Some(TokenUrl::new(config.token_url.clone()).unwrap()),
+        AuthUrl::new(config.auth_url.clone())?,
+        Some(TokenUrl::new(config.token_url.clone())?),
     );
 
     // fetch token
