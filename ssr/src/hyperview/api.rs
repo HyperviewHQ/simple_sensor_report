@@ -75,7 +75,7 @@ pub struct NumericSensorDailySummaryDataPoint {
 
 pub fn get_asset_list(
     config: &AppConfig,
-    query: String,
+    query: Vec<(&str, &str)>,
     custom_property: String,
     sensor_name: String,
     year: i32,
@@ -88,7 +88,7 @@ pub fn get_asset_list(
     let mut basic_assets: Vec<BasicAsset> = Vec::new();
 
     // format target
-    let target_url = format!("{}{}{}", config.instance_url, ASSET_API_PREFIX, query);
+    let target_url = format!("{}{}", config.instance_url, ASSET_API_PREFIX);
     debug!("Target URL: {:?}", target_url);
 
     info!("Getting asset list");
@@ -101,6 +101,7 @@ pub fn get_asset_list(
         .header(AUTHORIZATION, auth_header)
         .header(CONTENT_TYPE, "application/json")
         .header(ACCEPT, "application/json")
+        .query(&query)
         .send()?
         .json::<Value>()?;
 
@@ -261,19 +262,19 @@ fn get_numeric_sensor_monthly_summary(
     // Start http client
     let req = reqwest::blocking::Client::new();
 
-    let mut query: Vec<(String, String)> = Vec::new();
+    let mut query: Vec<(&str, &str)> = Vec::new();
 
     for asset in asset_list {
         if let Some(sensor_id) = &asset.sensor_id {
-            query.push(("sensorIds".to_string(), sensor_id.to_string()));
+            query.push(("sensorIds", sensor_id));
         }
     }
 
     let start_time = format!("{}-{}-1T00:00:00.000", year, month);
-    let end_time = format!("{}T00:00:00.000", end.format("%Y-%m-%d").to_string());
+    let end_time = format!("{}T00:00:00.000", end.format("%Y-%m-%d"));
 
-    query.push(("startTime".to_string(), start_time));
-    query.push(("endTime".to_string(), end_time));
+    query.push(("startTime", &start_time));
+    query.push(("endTime", &end_time));
     trace!("{:#?}", query);
 
     // Get response

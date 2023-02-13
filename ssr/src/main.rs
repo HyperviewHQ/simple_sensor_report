@@ -26,7 +26,7 @@ fn main() -> Result<()> {
     let config: AppConfig = confy::load_path(get_config_path())?;
     trace!("Config: \n{:#?}", config);
 
-    let query = "?assetType=rack&(limit)=1000".to_string();
+    let query = vec![("assetType", "rack"), ("(limit)", "1000")];
     let asset_list = get_asset_list(
         &config,
         query,
