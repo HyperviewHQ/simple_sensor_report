@@ -238,7 +238,6 @@ fn get_asset_sensors(
                 "N/A".to_string()
             };
 
-
             if name == sensor_name {
                 if !is_numeric {
                     return Err(SsrError::NonNumericSensorUsedError.into());
@@ -246,8 +245,8 @@ fn get_asset_sensors(
                 asset.sensor_name = Some(name);
                 asset.sensor_id = Some(id.clone());
                 asset.sensor_unit = Some(unit);
-                
-                debug!("Hit on sensor: {} for asser: {}", id, asset.id);
+
+                debug!("Hit on sensor: {} for asset: {}", id, asset.id);
             }
         }
     }
@@ -261,46 +260,71 @@ fn get_numeric_sensor_monthly_summary(
     year: i32,
     month: u32,
 ) -> Result<Vec<NumericSensorResponse>> {
-    let mut query: Vec<(&str, &str)> = Vec::new();
+    let chunk = 100;
+    let mut done = false;
+    let mut start = 0;
+    let mut end = chunk;
 
-    for asset in asset_list {
-        if let Some(sensor_id) = &asset.sensor_id {
-            query.push(("sensorIds", sensor_id));
+    let mut sensor_data: Vec<NumericSensorResponse> = Vec::new();
+
+    loop {
+        if end > asset_list.len() {
+            end = asset_list.len();
+            done = true;
+        } 
+
+        debug!("Fetching sensor chunk: {} -> {}", start, end);
+
+        let mut query: Vec<(&str, &str)> = Vec::new();
+
+        for i in start..end {
+            if let Some(sensor_id) = &asset_list[i].sensor_id {
+                query.push(("sensorIds", sensor_id));
+            }
         }
+
+        let period_end = get_next_date(year, month)?;
+        let start_time = format!("{}-{}-1T00:00:00.000", year, month);
+        let end_time = format!("{}T00:00:00.000", period_end.format("%Y-%m-%d"));
+
+        query.push(("startTime", &start_time));
+        query.push(("endTime", &end_time));
+        trace!("{:#?}", query);
+
+        // Get Authorization header for request
+        let auth_header = get_auth_header(config)?;
+
+        // format target
+        let target_url = format!(
+            "{}{}",
+            config.instance_url, ASSET_NUMERIC_SENSOR_DAILY_SUMMARY
+        );
+        debug!("Target URL: {:?}", target_url);
+
+        // Start http client
+        let req = reqwest::blocking::Client::new();
+
+        // Get response
+        let mut resp = req
+            .get(target_url.clone())
+            .header(AUTHORIZATION, auth_header)
+            .header(CONTENT_TYPE, "application/json")
+            .header(ACCEPT, "application/json")
+            .query(&query)
+            .send()?
+            .json::<Vec<NumericSensorResponse>>()?;
+    
+        sensor_data.append(&mut resp);
+
+        if done {
+            break;
+        }
+
+        start += chunk;
+        end += chunk;
     }
 
-    let end = get_next_date(year, month)?;
-    let start_time = format!("{}-{}-1T00:00:00.000", year, month);
-    let end_time = format!("{}T00:00:00.000", end.format("%Y-%m-%d"));
-
-    query.push(("startTime", &start_time));
-    query.push(("endTime", &end_time));
-    trace!("{:#?}", query);
-
-    // Get Authorization header for request
-    let auth_header = get_auth_header(config)?;
-
-    // format target
-    let target_url = format!(
-        "{}{}",
-        config.instance_url, ASSET_NUMERIC_SENSOR_DAILY_SUMMARY
-    );
-    debug!("Target URL: {:?}", target_url);
-
-    // Start http client
-    let req = reqwest::blocking::Client::new();
-
-    // Get response
-    let resp = req
-        .get(target_url.clone())
-        .header(AUTHORIZATION, auth_header)
-        .header(CONTENT_TYPE, "application/json")
-        .header(ACCEPT, "application/json")
-        .query(&query)
-        .send()?
-        .json::<Vec<NumericSensorResponse>>()?;
-
-    Ok(resp)
+    Ok(sensor_data)
 }
 
 fn map_sensor_data_to_asset(
