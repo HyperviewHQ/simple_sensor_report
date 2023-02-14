@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::NaiveDate;
 use hyperview::cli::AppConfig;
-use log::{info, trace, LevelFilter};
+use log::{debug, info, trace, LevelFilter};
 
 use crate::hyperview::{
     api::get_asset_list,
@@ -15,13 +15,13 @@ fn main() -> Result<()> {
 
     if let Some(debug_level) = args.get_one::<String>("debug-level") {
         let level_filter = get_debug_filter(debug_level);
-
         env_logger::builder().filter(None, level_filter).init();
     } else {
         env_logger::init();
     };
 
     info!("Starting ssr");
+    debug!("Command args: {:#?}", args);
 
     let config: AppConfig = confy::load_path(get_config_path())?;
     trace!("Config: \n{:#?}", config);

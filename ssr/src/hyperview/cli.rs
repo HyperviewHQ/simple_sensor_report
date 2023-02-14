@@ -19,8 +19,6 @@ pub fn get_config_path() -> String {
 
 pub fn get_args() -> ArgMatches {
     Command::new("SSR")
-        .author("Hyperview Technologies Ltd.")
-        .about("Simple sensor report generator")
         .arg(
             Arg::new("debug-level")
                 .short('d')
@@ -33,6 +31,15 @@ pub fn get_args() -> ArgMatches {
                 .value_parser(PossibleValuesParser::new([
                     "trace", "debug", "info", "warn", "error",
                 ])),
+        )
+        .arg(
+            Arg::new("sensor")
+                .short('s')
+                .long("sensor")
+                .action(ArgAction::Set)
+                .required(true)
+                .help("Set sensor name (Case Sensitive)")
+                .ignore_case(true),
         )
         .get_matches()
 }
