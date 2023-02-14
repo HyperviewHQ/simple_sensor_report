@@ -1,5 +1,4 @@
 use anyhow::Result;
-use chrono::NaiveDate;
 use hyperview::cli::AppConfig;
 use log::{info, trace, LevelFilter};
 
@@ -12,20 +11,17 @@ mod hyperview;
 
 fn main() -> Result<()> {
     let args = get_args();
-
-    if let Some(debug_level) = args.get_one::<String>("debug-level") {
-        let level_filter = get_debug_filter(debug_level);
-        env_logger::builder().filter(None, level_filter).init();
-    } else {
-        env_logger::init();
-    };
+    let debug_level = args.get_one::<String>("debug-level").unwrap();
+    let level_filter = get_debug_filter(debug_level);
+    env_logger::builder().filter(None, level_filter).init();
 
     info!("Starting ssr");
 
     let config: AppConfig = confy::load_path(get_config_path())?;
-    trace!("Config: \n{:#?}", config);
+    info!("Connecting to: {}", config.instance_url);
 
     let query = vec![("assetType", "rack"), ("(limit)", "1000")];
+
     let asset_list = get_asset_list(
         &config,
         query,
@@ -36,10 +32,6 @@ fn main() -> Result<()> {
     );
 
     trace!("{:#?}", asset_list);
-
-    let d = "2023-02-01T00:00:00.000";
-    let pd = NaiveDate::parse_from_str(d, "%Y-%m-%dT%H:%M:%S%.f")?;
-    info!("DEBUG parsed time: {}", pd.to_string());
 
     Ok(())
 }
