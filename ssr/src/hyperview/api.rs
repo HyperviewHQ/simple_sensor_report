@@ -271,7 +271,7 @@ fn get_numeric_sensor_monthly_summary(
         if end > asset_list.len() {
             end = asset_list.len();
             done = true;
-        } 
+        }
 
         debug!("Fetching sensor chunk: {} -> {}", start, end);
 
@@ -313,7 +313,7 @@ fn get_numeric_sensor_monthly_summary(
             .query(&query)
             .send()?
             .json::<Vec<NumericSensorResponse>>()?;
-    
+
         sensor_data.append(&mut resp);
 
         if done {
