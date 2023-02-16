@@ -74,17 +74,17 @@ struct NumericSensorResponse {
 
 #[derive(Debug, Deserialize, Serialize, Default, Clone)]
 pub struct NumericSensorDailySummaryDataPoint {
-    r: String,
-    avg: f64,
-    max: f64,
-    min: f64,
-    lst: f64,
+    pub r: String,
+    pub avg: f64,
+    pub max: f64,
+    pub min: f64,
+    pub lst: f64,
 }
 
 pub fn get_asset_list(
     config: &AppConfig,
     query: Vec<(&str, &str)>,
-    custom_property: String,
+    custom_property: Option<String>,
     sensor_name: String,
     year: i32,
     month: u32,
@@ -94,11 +94,11 @@ pub fn get_asset_list(
 
     let mut basic_assets: Vec<BasicAsset> = Vec::new();
 
-    info!("Getting asset list");
+    info!("Processing assets");
 
     // format target
     let target_url = format!("{}{}", config.instance_url, ASSET_API_PREFIX);
-    debug!("Target URL: {:?}", target_url);
+    debug!("Request URL: {:?}", target_url);
 
     // Start http client
     let req = reqwest::blocking::Client::new();
@@ -119,7 +119,7 @@ pub fn get_asset_list(
     if let Some(metadata) = &resp.get("_metadata") {
         total = metadata["total"].as_u64().unwrap();
         limit = metadata["limit"].as_u64().unwrap();
-        debug!("Total records found: {}, quey limit: {}", total, limit);
+        info!("\nMeta Data:\n| total: {} | limit: {} |\n", total, limit);
     }
 
     let end = if limit < total {
@@ -146,15 +146,17 @@ pub fn get_asset_list(
     let throttle = time::Duration::from_millis(100);
     thread::sleep(throttle);
 
-    info!("Getting custom property values");
-    get_asset_custom_properties(config, &mut basic_assets, custom_property)?;
+    if let Some(cp) = custom_property {
+        info!("Processing custom properties");
+        get_asset_custom_properties(config, &mut basic_assets, cp)?;
+    }
 
     thread::sleep(throttle);
-    info!("Getting sensor ids");
+    info!("Processing sensors");
     get_asset_sensors(config, &mut basic_assets, sensor_name)?;
 
     thread::sleep(throttle);
-    info!("Getting sensor data for month");
+    info!("Processing sensor data");
     let sensor_data = get_numeric_sensor_monthly_summary(config, &mut basic_assets, year, month)?;
     map_sensor_data_to_asset(&mut basic_assets, &sensor_data);
 
@@ -178,7 +180,7 @@ fn get_asset_custom_properties(
             "{}{}/{}",
             config.instance_url, ASSET_CUSTOM_PROPERTIES, asset.id
         );
-        debug!("Target URL: {:?}", target_url);
+        debug!("Request URL: {:?}", target_url);
 
         // Get response
         let resp = req
@@ -216,7 +218,7 @@ fn get_asset_sensors(
     for asset in asset_list {
         // format target
         let target_url = format!("{}{}/{}", config.instance_url, ASSET_SENSORS, asset.id);
-        debug!("Target URL: {:?}", target_url);
+        debug!("Request URL: {:?}", target_url);
 
         // Get response
         let resp = req
@@ -299,7 +301,7 @@ fn get_numeric_sensor_monthly_summary(
             "{}{}",
             config.instance_url, ASSET_NUMERIC_SENSOR_DAILY_SUMMARY
         );
-        debug!("Target URL: {:?}", target_url);
+        debug!("Request URL: {:?}", target_url);
 
         // Start http client
         let req = reqwest::blocking::Client::new();
@@ -346,17 +348,6 @@ fn map_sensor_data_to_asset(
         }
     }
 }
-
-/*
-fn get_number_of_days_in_month(year: i32, month: u32) -> Result<i64> {
-    if let Some(start) = NaiveDate::from_ymd_opt(year, month, 1) {
-        let end = get_next_date(year, month)?;
-        Ok(end.signed_duration_since(start).num_days())
-    } else {
-        Err(SsrError::YearMonthConversionError.into())
-    }
-}
-*/
 
 fn get_next_date(year: i32, month: u32) -> Result<NaiveDate> {
     if let Some(_start) = NaiveDate::from_ymd_opt(year, month, 1) {

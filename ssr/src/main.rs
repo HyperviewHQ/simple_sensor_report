@@ -1,54 +1,82 @@
 use anyhow::Result;
 use clap::Parser;
 use hyperview::cli::AppConfig;
-use log::{info, trace, LevelFilter};
+use log::{info, LevelFilter};
 
-use crate::hyperview::{api::get_asset_list, cli::get_config_path};
+use crate::hyperview::{
+    api::get_asset_list,
+    cli::{get_config_path, SsrArgs},
+};
 
 mod hyperview;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    #[arg(short, long, help = "Debug level", default_value = "info", value_parser(["trace", "debug", "info", "warn", "error"]))]
-    debug_level: String,
-
-    #[arg(short, long, help = "Sensor name")]
-    sensor: String,
-
-    #[arg(short, long, help = "Optional custom property name")]
-    custom_property: Option<String>,
-}
-
 fn main() -> Result<()> {
-    let args = Args::parse();
+    let args = SsrArgs::parse();
 
-    let debug_level = args.debug_level.clone();
+    let debug_level = args.debug_level;
+    let sensor = args.sensor;
+    let custom_property = args.custom_property;
+    let year = args.year;
+    let month = args.month;
+    let asset_type = args.asset_type;
+    let offset = args.offset.to_string();
+    let limit = args.limit.to_string();
 
     let level_filter = get_debug_filter(&debug_level);
     env_logger::builder().filter(None, level_filter).init();
 
     info!("Starting ssr");
     info!(
-        "Startup options:\n - debug level: {}\n - sensor: {} \n - custom property: {:?}",
-        args.debug_level, args.sensor, args.custom_property
+        "\nStartup options:\n| asset type: {} | debug level: {} | sensor: {} | custom property: {:?} | offset: {} | limit: {} |\n",
+        asset_type, debug_level, sensor, custom_property, offset, limit
     );
 
     let config: AppConfig = confy::load_path(get_config_path())?;
     info!("Connecting to: {}", config.instance_url);
 
-    let query = vec![("assetType", "rack"), ("(limit)", "1000")];
+    let query = vec![
+        ("assetType", asset_type.as_str()),
+        ("(after)", &offset),
+        ("(limit)", &limit),
+        ("(sort)", "+Id"),
+    ];
 
-    let asset_list = get_asset_list(
-        &config,
-        query,
-        "Business Unit".to_string(),
-        "averageKwhByHour".to_string(),
-        2023,
-        2,
-    );
+    let asset_list = get_asset_list(&config, query, custom_property, sensor, year, month)?;
 
-    trace!("{:#?}", asset_list);
+    for asset in asset_list {
+        let cp = if let Some(cp) = asset.custom_property {
+            cp
+        } else {
+            "N/A".to_string()
+        };
+
+        let sn = asset.sensor_name.unwrap();
+
+        let sid = asset.sensor_id.unwrap();
+
+        let su = if let Some(su) = asset.sensor_unit {
+            su
+        } else {
+            "N/A".to_string()
+        };
+
+        for reading in asset.sensor_data_points {
+            println!(
+                "{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
+                asset.name,
+                asset.id,
+                cp,
+                sn,
+                sid,
+                su,
+                reading.r,
+                reading.avg,
+                reading.max,
+                reading.min,
+                reading.lst
+            );
+        }
+    }
 
     Ok(())
 }
