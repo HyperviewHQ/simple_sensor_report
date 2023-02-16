@@ -1,4 +1,5 @@
 use clap::{value_parser, Parser};
+use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
@@ -24,7 +25,7 @@ pub struct SsrArgs {
     pub debug_level: String,
 
     #[arg(
-        short,
+        short = 't',
         long,
         help = "Asset type. e.g. Rack",
         value_parser([
@@ -82,4 +83,18 @@ pub struct SsrArgs {
 
     #[arg(short, long, help = "Record limit (1 -> 250). e.g. 100", default_value = "50", value_parser(value_parser!(u32).range(1..251)))]
     pub limit: u32,
+}
+
+pub fn get_debug_filter(debug_level: &String) -> LevelFilter {
+    if debug_level == "error" {
+        LevelFilter::Error
+    } else if debug_level == "warn" {
+        LevelFilter::Warn
+    } else if debug_level == "debug" {
+        LevelFilter::Debug
+    } else if debug_level == "trace" {
+        LevelFilter::Trace
+    } else {
+        LevelFilter::Info
+    }
 }

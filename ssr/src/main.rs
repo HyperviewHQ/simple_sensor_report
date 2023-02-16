@@ -1,11 +1,11 @@
 use anyhow::Result;
 use clap::Parser;
 use hyperview::cli::AppConfig;
-use log::{info, LevelFilter};
+use log::info;
 
 use crate::hyperview::{
     api::get_asset_list,
-    cli::{get_config_path, SsrArgs},
+    cli::{get_config_path, get_debug_filter, SsrArgs},
 };
 
 mod hyperview;
@@ -79,18 +79,4 @@ fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-fn get_debug_filter(debug_level: &String) -> LevelFilter {
-    if debug_level == "error" {
-        LevelFilter::Error
-    } else if debug_level == "warn" {
-        LevelFilter::Warn
-    } else if debug_level == "debug" {
-        LevelFilter::Debug
-    } else if debug_level == "trace" {
-        LevelFilter::Trace
-    } else {
-        LevelFilter::Info
-    }
 }
