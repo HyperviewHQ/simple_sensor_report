@@ -1,11 +1,14 @@
+use std::path::Path;
+
 use anyhow::Result;
 use clap::Parser;
 use hyperview::cli::AppConfig;
-use log::info;
+use log::{error, info};
 
 use crate::hyperview::{
     api::get_asset_list,
-    cli::{get_config_path, get_debug_filter, SsrArgs},
+    cli::{get_config_path, get_debug_filter, write_output, SsrArgs},
+    ssr_errors::SsrError,
 };
 
 mod hyperview;
@@ -21,6 +24,12 @@ fn main() -> Result<()> {
     let asset_type = args.asset_type;
     let offset = args.offset.to_string();
     let limit = args.limit.to_string();
+    let output_file = args.output_file;
+
+    if Path::new(&output_file).exists() {
+        error!("Specified output file already exists. exiting ...");
+        return Err(SsrError::OutputFileExistsError.into());
+    }
 
     let level_filter = get_debug_filter(&debug_level);
     env_logger::builder().filter(None, level_filter).init();
@@ -43,40 +52,8 @@ fn main() -> Result<()> {
 
     let asset_list = get_asset_list(&config, query, custom_property, sensor, year, month)?;
 
-    for asset in asset_list {
-        let cp = if let Some(cp) = asset.custom_property {
-            cp
-        } else {
-            "N/A".to_string()
-        };
-
-        let sn = asset.sensor_name.unwrap();
-
-        let sid = asset.sensor_id.unwrap();
-
-        let su = if let Some(su) = asset.sensor_unit {
-            su
-        } else {
-            "N/A".to_string()
-        };
-
-        for reading in asset.sensor_data_points {
-            println!(
-                "{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
-                asset.name,
-                asset.id,
-                cp,
-                sn,
-                sid,
-                su,
-                reading.r,
-                reading.avg,
-                reading.max,
-                reading.min,
-                reading.lst
-            );
-        }
-    }
+    info!("Writing data to output file: {}", output_file);
+    write_output(output_file, asset_list)?;
 
     Ok(())
 }

@@ -1,6 +1,10 @@
+use anyhow::Result;
 use clap::{value_parser, Parser};
+use csv::Writer;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
+
+use super::api::BasicAsset;
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppConfig {
@@ -83,6 +87,28 @@ pub struct SsrArgs {
 
     #[arg(short, long, help = "Record limit (1 -> 250). e.g. 100", default_value = "50", value_parser(value_parser!(u32).range(1..251)))]
     pub limit: u32,
+
+    #[arg(
+        short = 'f',
+        long,
+        help = "Name of output csv file. e.g. sensor_data_2023_02.csv"
+    )]
+    pub output_file: String,
+}
+
+#[derive(Debug, Serialize)]
+struct SensorReadingRow {
+    asset_name: String,
+    asset_id: String,
+    custom_property: String,
+    sensor_name: String,
+    sensor_id: String,
+    sensor_unit: String,
+    timestamp: String,
+    avg: f64,
+    max: f64,
+    min: f64,
+    lst: f64,
 }
 
 pub fn get_debug_filter(debug_level: &String) -> LevelFilter {
@@ -97,4 +123,44 @@ pub fn get_debug_filter(debug_level: &String) -> LevelFilter {
     } else {
         LevelFilter::Info
     }
+}
+
+pub fn write_output(filename: String, asset_list: Vec<BasicAsset>) -> Result<()> {
+    let mut writer = Writer::from_path(filename)?;
+
+    for asset in asset_list {
+        let cp = if let Some(cp) = asset.custom_property {
+            cp
+        } else {
+            "N/A".to_string()
+        };
+
+        let sn = asset.sensor_name.unwrap();
+
+        let sid = asset.sensor_id.unwrap();
+
+        let su = if let Some(su) = asset.sensor_unit {
+            su
+        } else {
+            "N/A".to_string()
+        };
+
+        for reading in asset.sensor_data_points {
+            writer.serialize(SensorReadingRow {
+                asset_name: asset.name.clone(),
+                asset_id: asset.id.clone(),
+                custom_property: cp.clone(),
+                sensor_name: sn.clone(),
+                sensor_id: sid.clone(),
+                sensor_unit: su.clone(),
+                timestamp: reading.r,
+                avg: reading.avg,
+                max: reading.max,
+                min: reading.min,
+                lst: reading.lst,
+            })?;
+        }
+    }
+
+    Ok(())
 }

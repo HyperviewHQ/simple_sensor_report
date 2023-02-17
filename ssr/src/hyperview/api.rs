@@ -1,28 +1,19 @@
-use core::time;
-use std::thread;
-
-use super::{auth::get_auth_header, cli::AppConfig};
 use anyhow::Result;
 use chrono::NaiveDate;
+use core::time;
 use log::{debug, info, trace};
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{serde_as, DefaultOnError};
-use thiserror::Error;
+use std::thread;
+
+use super::{auth::get_auth_header, cli::AppConfig, ssr_errors::SsrError};
 
 const ASSET_API_PREFIX: &str = "/api/asset/assets";
 const ASSET_CUSTOM_PROPERTIES: &str = "/api/asset/customAssetProperties";
 const ASSET_SENSORS: &str = "/api/asset/sensors";
 const ASSET_NUMERIC_SENSOR_DAILY_SUMMARY: &str = "/api/asset/sensorsDailySummaries/numeric";
-
-#[derive(Debug, Error)]
-enum SsrError {
-    #[error("Could not convert provided year and month")]
-    YearMonthConversionError,
-    #[error("Invalid sensor type. Only numeric sensors are supported")]
-    NonNumericSensorUsedError,
-}
 
 #[derive(Debug, Default)]
 pub struct BasicAsset {
