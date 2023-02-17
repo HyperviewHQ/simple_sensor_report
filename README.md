@@ -55,8 +55,13 @@ token_url = 'https://example.hyperviewhq.com/connect/token'
 instance_url = 'https://example.hyperviewhq.com'
 ```
 
+# Defaults
+Data for the first 50 assets (ordered by id) is downloaded by default. Sensor data for a maximum of 250 assets can be downloaded at any one time. This can be controlled with the **limit** command line option. More data can be downloaded by using the **offset** command line option to page through assets. 
+
+Using the combination of limit and offset, data from thousands of assets can be downloaded. 
 
 # Limitations
 
 - Only numeric sensors are supported at this time
 - Daily summary data can be fetched one month at a time (e.g. 2023-2 for February 2023 data)
+
