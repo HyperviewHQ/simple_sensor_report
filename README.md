@@ -60,6 +60,8 @@ Data for the first 50 assets (ordered by id) is downloaded by default. Sensor da
 
 Using the combination of limit and offset, data from thousands of assets can be downloaded. 
 
+The default debug level is INFO, this provides standard command information. More or less verbose output can be controlled with the **debug-level** command line option.
+ 
 # Limitations
 
 - Only numeric sensors are supported at this time
