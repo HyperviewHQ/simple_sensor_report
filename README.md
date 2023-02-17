@@ -1,5 +1,4 @@
 # Simple Sensor Report (SSR)
-
 SSR is a sensor data download tool for Hyperview. It allows users to download monthly summary data for one sensor and one asset type. For example, you could use this tool to get energy metering reports for racks. 
 
 ```console
@@ -9,9 +8,9 @@ $ ssr -t Rack -s averageKwhByHour -m 2 -y 2023 -c "Business Unit" -f ./kwh_rack_
 SSR has various command line options.
 
 ```console
-$ ./ssr --help                                                                                                                                        main 
+$ ./ssr --help
+ 
 A simple sensor report generator for Hyperview
-:w
 
 Usage: ssr [OPTIONS] --asset-type <ASSET_TYPE> --sensor <SENSOR> --year <YEAR> --month <MONTH> --output-file <OUTPUT_FILE>
 
@@ -41,12 +40,11 @@ Options:
 ```
 
 # Configuration
-
 A valid Hyperview API client must be used. The API client must have appropriate access to the device sensor data needed. The configuration file must be placed in `$HOME/.ssr/ssr.toml`
 
 ## Example
 
-```toml
+```console
 client_id = 'c33472d0-c66b-4659-a8f8-73c289ba4dbe'
 client_secret = '2c239e21-f81b-472b-a8c3-82296d5f250d'
 scope = 'HyperviewManagerApi'
@@ -60,8 +58,8 @@ Data for the first 50 assets (ordered by id) is downloaded by default. Sensor da
 
 Using the combination of limit and offset, data from thousands of assets can be downloaded. 
 
-The default debug level is INFO, this provides standard command information. More or less verbose output can be controlled with the **debug-level** command line option.
- 
+The default debug level is INFO, this provides standard information. More (or less) verbose output can be controlled with the **debug-level** command line option.
+
 # Limitations
 
 - Only numeric sensors are supported at this time
