@@ -68,13 +68,13 @@ The default debug level is INFO, this provides standard information. More (or le
 # Building
 
 ## Linux
-If you are experimenting with the code on a single platform the usual `rust build` and `rust build --release` will work. However, if the desire is to build a binary that can run on multiple Linux distributions it is recommended to install the `x86_64-unknown-linux-musl` target and to build a statically-linked binary to avoid dependency problems. 
+If you are experimenting with the code on a single platform the usual `cargo build` and `cargo build --release` will work. However, if the desire is to build a binary that can run on multiple Linux distributions it is recommended to install the `x86_64-unknown-linux-musl` target and to build a statically-linked binary to avoid dependency problems. 
 
 The command to build a statically-linked version is:
 
 ```console
-PKG_CONFIG_SYSROOT_DIR=/ RUSTFLAGS='-C target-feature=+crt-static'  cargo build --target x86_64-unknown-linux-musl --release
+PKG_CONFIG_SYSROOT_DIR=/ RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-unknown-linux-musl --release
 ```
 
 ## Windows & MacOS
-The usual `rust build` and `rust build --release` will work. 
+The usual `cargo build` and `cargo build --release` will work. 
