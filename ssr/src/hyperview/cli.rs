@@ -19,7 +19,7 @@ pub struct AppConfig {
 pub fn get_config_path() -> String {
     let home_path = dirs::home_dir().expect("Error: Home directory not found");
 
-    format!("{}/.ssr/ssr.toml", home_path.to_str().unwrap())
+    format!("{}/.hyperview/hyperview.toml", home_path.to_str().unwrap())
 }
 
 #[derive(Parser, Debug)]

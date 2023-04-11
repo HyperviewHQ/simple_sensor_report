@@ -1,6 +1,6 @@
 [package]
 name = "ssr"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Hyperview Technologies Inc."]
 description = "A simple sensor report generator for Hyperview"
@@ -13,7 +13,7 @@ chrono = "0.4.23"
 clap = { version = "4.1.4", features = ["derive"] }
 confy = "0.5.1"
 csv = "1.1.6"
-dirs = "4.0.0"
+dirs = "5.0.0"
 env_logger = "0.10.0"
 log = "0.4.17"
 oauth2 = "4.3.0"
