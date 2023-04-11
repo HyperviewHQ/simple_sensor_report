@@ -40,7 +40,7 @@ Options:
 ```
 
 # Configuration
-A valid Hyperview API client must be used. The API client must have appropriate access to the device sensor data needed. The configuration file must be placed in `$HOME/.ssr/ssr.toml`
+A valid Hyperview API client must be used. The API client must have appropriate access to the device sensor data needed. The configuration file must be placed in `$HOME/.hyperview/hyperview.toml`
 
 ## Example
 
