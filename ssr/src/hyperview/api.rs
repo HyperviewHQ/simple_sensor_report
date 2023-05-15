@@ -35,19 +35,20 @@ struct CustomProperty {
     #[serde(alias = "customAssetPropertyGroupId")]
     custom_asset_property_group_id: String,
     #[serde_as(deserialize_as = "DefaultOnError")]
-    value: String,
+    value: Option<String>,
     #[serde(alias = "dataType")]
     data_type: String,
     name: String,
     #[serde(alias = "groupName")]
     group_name: String,
+    #[serde_as(deserialize_as = "DefaultOnError")]
     #[serde(alias = "dataSource")]
     data_source: String,
     #[serde_as(deserialize_as = "DefaultOnError")]
     #[serde(alias = "updatedDateTime")]
-    updated_date_time: String,
+    updated_date_time: Option<String>,
     #[serde_as(deserialize_as = "DefaultOnError")]
-    unit: String,
+    unit: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -182,9 +183,11 @@ fn get_asset_custom_properties(
             .send()?
             .json::<Vec<CustomProperty>>()?;
 
+        debug!("Reading custom properties for asset: {}", asset.id);
+
         for prop in resp.iter() {
             if prop.name.trim().to_lowercase() == custom_property.trim().to_lowercase() {
-                asset.custom_property = Some(prop.value.clone());
+                asset.custom_property = prop.value.clone();
             }
         }
 
