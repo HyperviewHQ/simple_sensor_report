@@ -28,7 +28,7 @@ fn main() -> Result<()> {
 
     if Path::new(&output_file).exists() {
         error!("Specified output file already exists. exiting ...");
-        return Err(SsrError::OutputFileExistsError.into());
+        return Err(SsrError::OutputFileExists.into());
     }
 
     let level_filter = get_debug_filter(&debug_level);

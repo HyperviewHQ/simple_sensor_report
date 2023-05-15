@@ -3,11 +3,11 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum SsrError {
     #[error("Could not convert provided year and month")]
-    YearMonthConversionError,
+    YearMonthConversion,
 
     #[error("Invalid sensor type. Only numeric sensors are supported")]
-    NonNumericSensorUsedError,
+    NonNumericSensorUsed,
 
     #[error("Output file already exists.")]
-    OutputFileExistsError,
+    OutputFileExists,
 }

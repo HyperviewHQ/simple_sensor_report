@@ -35,7 +35,7 @@ struct CustomProperty {
     #[serde(alias = "customAssetPropertyGroupId")]
     custom_asset_property_group_id: String,
     #[serde_as(deserialize_as = "DefaultOnError")]
-    value: Option<String>,
+    value: String,
     #[serde(alias = "dataType")]
     data_type: String,
     name: String,
@@ -46,9 +46,9 @@ struct CustomProperty {
     data_source: String,
     #[serde_as(deserialize_as = "DefaultOnError")]
     #[serde(alias = "updatedDateTime")]
-    updated_date_time: Option<String>,
+    updated_date_time: String,
     #[serde_as(deserialize_as = "DefaultOnError")]
-    unit: Option<String>,
+    unit: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -187,7 +187,7 @@ fn get_asset_custom_properties(
 
         for prop in resp.iter() {
             if prop.name.trim().to_lowercase() == custom_property.trim().to_lowercase() {
-                asset.custom_property = prop.value.clone();
+                asset.custom_property = Some(prop.value.clone());
             }
         }
 
@@ -236,7 +236,7 @@ fn get_asset_sensors(
 
             if name == sensor_name {
                 if !is_numeric {
-                    return Err(SsrError::NonNumericSensorUsedError.into());
+                    return Err(SsrError::NonNumericSensorUsed.into());
                 }
                 asset.sensor_name = Some(name);
                 asset.sensor_id = Some(id.clone());
@@ -273,8 +273,8 @@ fn get_numeric_sensor_monthly_summary(
 
         let mut query: Vec<(&str, &str)> = Vec::new();
 
-        for i in start..end {
-            if let Some(sensor_id) = &asset_list[i].sensor_id {
+        for i in asset_list.iter().take(end).skip(start) {
+            if let Some(sensor_id) = &i.sensor_id {
                 query.push(("sensorIds", sensor_id));
             }
         }
@@ -325,7 +325,7 @@ fn get_numeric_sensor_monthly_summary(
 
 fn map_sensor_data_to_asset(
     asset_list: &mut Vec<BasicAsset>,
-    sensor_data: &Vec<NumericSensorResponse>,
+    sensor_data: &[NumericSensorResponse],
 ) {
     for asset in asset_list {
         if let Some(sensor_id) = &asset.sensor_id {
@@ -336,7 +336,7 @@ fn map_sensor_data_to_asset(
 
             // only one response is expected
             // TODO: refactor to return Err if the number of returned results is unexpected
-            if numeric_sensor_response.len() > 0 {
+            if !numeric_sensor_response.is_empty() {
                 asset.sensor_data_points = numeric_sensor_response[0].sensor_data_points.clone();
             }
         }
@@ -357,6 +357,6 @@ fn get_next_date(year: i32, month: u32) -> Result<NaiveDate> {
 
         Ok(NaiveDate::from_ymd_opt(e_year, e_month, 1).unwrap())
     } else {
-        Err(SsrError::YearMonthConversionError.into())
+        Err(SsrError::YearMonthConversion.into())
     }
 }

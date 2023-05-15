@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{value_parser, Parser};
 use csv::Writer;
-use log::LevelFilter;
+use log::{LevelFilter, debug};
 use serde::{Deserialize, Serialize};
 
 use super::api::BasicAsset;
@@ -146,6 +146,8 @@ pub fn write_output(filename: String, asset_list: Vec<BasicAsset>) -> Result<()>
         };
 
         for reading in asset.sensor_data_points {
+            debug!("{:?}", reading);
+
             writer.serialize(SensorReadingRow {
                 asset_name: asset.name.clone(),
                 asset_id: asset.id.clone(),
