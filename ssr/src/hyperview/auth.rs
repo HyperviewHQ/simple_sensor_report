@@ -16,7 +16,7 @@ pub fn get_auth_header(config: &AppConfig) -> Result<String> {
 
     let token_result = auth_client
         .exchange_client_credentials()
-        .add_scope(Scope::new("HyperviewManagerApi".to_string()))
+        .add_scope(Scope::new(config.scope.clone()))
         .request(&http_client)?;
 
     Ok(format!("Bearer {}", token_result.access_token().secret()))
