@@ -3,79 +3,19 @@ use chrono::NaiveDate;
 use core::time;
 use log::{debug, info, trace};
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use serde_with::{serde_as, DefaultOnError};
+use serde_json::{Map, Value};
 use std::thread;
 
-use super::{auth::get_auth_header, cli::AppConfig, ssr_errors::SsrError};
-
-const ASSET_API_PREFIX: &str = "/api/asset/assets";
-const ASSET_CUSTOM_PROPERTIES: &str = "/api/asset/customAssetProperties";
-const ASSET_SENSORS: &str = "/api/asset/sensors";
-const ASSET_NUMERIC_SENSOR_DAILY_SUMMARY: &str = "/api/asset/sensorsDailySummaries/numeric";
-
-#[derive(Debug, Default)]
-pub struct BasicAsset {
-    pub id: String,
-    pub name: String,
-    pub custom_property: Option<String>,
-    pub sensor_name: Option<String>,
-    pub sensor_id: Option<String>,
-    pub sensor_unit: Option<String>,
-    pub sensor_data_points: Vec<NumericSensorDailySummaryDataPoint>,
-}
-
-#[serde_as]
-#[derive(Debug, Deserialize, Serialize)]
-struct CustomProperty {
-    id: String,
-    #[serde(alias = "customAssetPropertyKeyId")]
-    custom_asset_property_key_id: String,
-    #[serde(alias = "customAssetPropertyGroupId")]
-    custom_asset_property_group_id: String,
-    #[serde_as(deserialize_as = "DefaultOnError")]
-    value: String,
-    #[serde(alias = "dataType")]
-    data_type: String,
-    name: String,
-    #[serde(alias = "groupName")]
-    group_name: String,
-    #[serde_as(deserialize_as = "DefaultOnError")]
-    #[serde(alias = "dataSource")]
-    data_source: String,
-    #[serde_as(deserialize_as = "DefaultOnError")]
-    #[serde(alias = "updatedDateTime")]
-    updated_date_time: String,
-    #[serde_as(deserialize_as = "DefaultOnError")]
-    unit: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct NumericSensorResponse {
-    #[serde(alias = "sensorId")]
-    sensor_id: String,
-    #[serde(alias = "sensorTypeDescription")]
-    sensor_type_description: String,
-    #[serde(alias = "sensorTypeId")]
-    sensor_type_id: String,
-    name: String,
-    #[serde(alias = "sensorDataPoints")]
-    sensor_data_points: Vec<NumericSensorDailySummaryDataPoint>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Default, Clone)]
-pub struct NumericSensorDailySummaryDataPoint {
-    pub r: String,
-    pub avg: f64,
-    pub max: f64,
-    pub min: f64,
-    pub lst: f64,
-}
+use super::{
+    api_constants::ASSET_API_PREFIX, api_constants::ASSET_CUSTOM_PROPERTIES,
+    api_constants::ASSET_NUMERIC_SENSOR_DAILY_SUMMARY, api_constants::ASSET_SENSORS,
+    api_data::BasicAsset, api_data::CustomProperty, api_data::NumericSensorResponse,
+    auth::get_auth_header, cli::AppConfig, ssr_errors::SsrError,
+};
 
 pub fn get_asset_list(
     config: &AppConfig,
-    query: Vec<(&str, &str)>,
+    query_params: Map<String, Value>,
     custom_property: Option<String>,
     sensor_name: String,
     year: i32,
@@ -101,7 +41,7 @@ pub fn get_asset_list(
         .header(AUTHORIZATION, auth_header)
         .header(CONTENT_TYPE, "application/json")
         .header(ACCEPT, "application/json")
-        .query(&query)
+        .query(&query_params)
         .send()?
         .json::<Value>()?;
 

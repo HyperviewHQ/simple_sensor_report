@@ -1,10 +1,10 @@
 use anyhow::Result;
 use clap::{value_parser, Parser};
 use csv::Writer;
-use log::{LevelFilter, debug};
+use log::{debug, LevelFilter};
 use serde::{Deserialize, Serialize};
 
-use super::api::BasicAsset;
+use super::api_data::BasicAsset;
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppConfig {
