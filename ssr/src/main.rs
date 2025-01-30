@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use anyhow::Result;
 use clap::Parser;
-use hyperview::cli::AppConfig;
-use log::{error, info};
+use hyperview::{auth::get_auth_header, cli::AppConfig};
+use log::{debug, error, info};
+use reqwest::Client;
 use serde_json::{Map, Value};
 
 use crate::hyperview::{
@@ -14,7 +14,8 @@ use crate::hyperview::{
 
 mod hyperview;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let args = SsrArgs::parse();
 
     if Path::new(&args.output_file).exists() {
@@ -31,7 +32,10 @@ fn main() -> Result<()> {
     );
 
     let config: AppConfig = confy::load_path(get_config_path())?;
-    info!("Connecting to: {}", config.instance_url);
+    let auth_header = get_auth_header(&config).await?;
+    let http_client = Client::new();
+
+    debug!("Connecting to: {}", config.instance_url);
 
     let mut query_params = Map::new();
     query_params.insert("assetType".to_string(), Value::String(args.asset_type));
@@ -46,7 +50,10 @@ fn main() -> Result<()> {
         args.sensor,
         args.year,
         args.month,
-    )?;
+        &http_client,
+        &auth_header,
+    )
+    .await?;
 
     info!("Writing data to output file: {}", args.output_file);
     write_output(args.output_file, asset_list)?;
