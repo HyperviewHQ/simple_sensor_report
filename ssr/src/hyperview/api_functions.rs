@@ -1,109 +1,49 @@
-use anyhow::Result;
 use chrono::NaiveDate;
 use core::time;
 use log::{debug, info, trace};
-use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use serde_with::{serde_as, DefaultOnError};
+use reqwest::{
+    header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
+    Client,
+};
+use serde_json::{Map, Value};
 use std::thread;
 
-use super::{auth::get_auth_header, cli::AppConfig, ssr_errors::SsrError};
+use super::{
+    api_constants::ASSET_API_PREFIX, api_constants::ASSET_CUSTOM_PROPERTIES,
+    api_constants::ASSET_NUMERIC_SENSOR_DAILY_SUMMARY, api_constants::ASSET_SENSORS,
+    api_data::BasicAsset, api_data::CustomProperty, api_data::NumericSensorResponse,
+    cli::AppConfig, ssr_errors::SsrError,
+};
 
-const ASSET_API_PREFIX: &str = "/api/asset/assets";
-const ASSET_CUSTOM_PROPERTIES: &str = "/api/asset/customAssetProperties";
-const ASSET_SENSORS: &str = "/api/asset/sensors";
-const ASSET_NUMERIC_SENSOR_DAILY_SUMMARY: &str = "/api/asset/sensorsDailySummaries/numeric";
-
-#[derive(Debug, Default)]
-pub struct BasicAsset {
-    pub id: String,
-    pub name: String,
-    pub custom_property: Option<String>,
-    pub sensor_name: Option<String>,
-    pub sensor_id: Option<String>,
-    pub sensor_unit: Option<String>,
-    pub sensor_data_points: Vec<NumericSensorDailySummaryDataPoint>,
-}
-
-#[serde_as]
-#[derive(Debug, Deserialize, Serialize)]
-struct CustomProperty {
-    id: String,
-    #[serde(alias = "customAssetPropertyKeyId")]
-    custom_asset_property_key_id: String,
-    #[serde(alias = "customAssetPropertyGroupId")]
-    custom_asset_property_group_id: String,
-    #[serde_as(deserialize_as = "DefaultOnError")]
-    value: String,
-    #[serde(alias = "dataType")]
-    data_type: String,
-    name: String,
-    #[serde(alias = "groupName")]
-    group_name: String,
-    #[serde_as(deserialize_as = "DefaultOnError")]
-    #[serde(alias = "dataSource")]
-    data_source: String,
-    #[serde_as(deserialize_as = "DefaultOnError")]
-    #[serde(alias = "updatedDateTime")]
-    updated_date_time: String,
-    #[serde_as(deserialize_as = "DefaultOnError")]
-    unit: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct NumericSensorResponse {
-    #[serde(alias = "sensorId")]
-    sensor_id: String,
-    #[serde(alias = "sensorTypeDescription")]
-    sensor_type_description: String,
-    #[serde(alias = "sensorTypeId")]
-    sensor_type_id: String,
-    name: String,
-    #[serde(alias = "sensorDataPoints")]
-    sensor_data_points: Vec<NumericSensorDailySummaryDataPoint>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Default, Clone)]
-pub struct NumericSensorDailySummaryDataPoint {
-    pub r: String,
-    pub avg: f64,
-    pub max: f64,
-    pub min: f64,
-    pub lst: f64,
-}
-
-pub fn get_asset_list(
+pub async fn get_asset_list(
     config: &AppConfig,
-    query: Vec<(&str, &str)>,
+    query_params: Map<String, Value>,
     custom_property: Option<String>,
     sensor_name: String,
     year: i32,
     month: u32,
-) -> Result<Vec<BasicAsset>> {
-    // Get Authorization header for request
-    let auth_header = get_auth_header(config)?;
-
+    http_client: &Client,
+    auth_header: &String,
+) -> anyhow::Result<Vec<BasicAsset>> {
     let mut basic_assets: Vec<BasicAsset> = Vec::new();
 
-    info!("Processing assets");
+    debug!("Processing assets");
 
     // format target
     let target_url = format!("{}{}", config.instance_url, ASSET_API_PREFIX);
     debug!("Request URL: {:?}", target_url);
 
-    // Start http client
-    let req = reqwest::blocking::Client::new();
-
     // Get response
-    let resp = req
+    let resp = http_client
         .get(target_url)
         .header(AUTHORIZATION, auth_header)
         .header(CONTENT_TYPE, "application/json")
         .header(ACCEPT, "application/json")
-        .query(&query)
-        .send()?
-        .json::<Value>()?;
+        .query(&query_params)
+        .send()
+        .await?
+        .json::<Value>()
+        .await?;
 
     let mut total = 0;
     let mut limit = 0;
@@ -140,32 +80,44 @@ pub fn get_asset_list(
 
     if let Some(cp) = custom_property {
         info!("Processing custom properties");
-        get_asset_custom_properties(config, &mut basic_assets, cp)?;
+        get_asset_custom_properties(config, &mut basic_assets, cp, http_client, auth_header)
+            .await?;
     }
 
     thread::sleep(throttle);
     info!("Processing sensors");
-    get_asset_sensors(config, &mut basic_assets, sensor_name)?;
+    get_asset_sensors(
+        config,
+        &mut basic_assets,
+        sensor_name,
+        http_client,
+        auth_header,
+    )
+    .await?;
 
     thread::sleep(throttle);
     info!("Processing sensor data");
-    let sensor_data = get_numeric_sensor_monthly_summary(config, &mut basic_assets, year, month)?;
+    let sensor_data = get_numeric_sensor_monthly_summary(
+        config,
+        &mut basic_assets,
+        year,
+        month,
+        http_client,
+        auth_header,
+    )
+    .await?;
     map_sensor_data_to_asset(&mut basic_assets, &sensor_data);
 
     Ok(basic_assets)
 }
 
-fn get_asset_custom_properties(
+async fn get_asset_custom_properties(
     config: &AppConfig,
     asset_list: &mut Vec<BasicAsset>,
     custom_property: String,
-) -> Result<()> {
-    // Get Authorization header for request
-    let auth_header = get_auth_header(config)?;
-
-    // Start http client
-    let req = reqwest::blocking::Client::new();
-
+    http_client: &Client,
+    auth_header: &String,
+) -> anyhow::Result<()> {
     for asset in asset_list {
         // format target
         let target_url = format!(
@@ -175,13 +127,15 @@ fn get_asset_custom_properties(
         debug!("Request URL: {:?}", target_url);
 
         // Get response
-        let resp = req
+        let resp = http_client
             .get(target_url)
-            .header(AUTHORIZATION, auth_header.clone())
+            .header(AUTHORIZATION, auth_header)
             .header(CONTENT_TYPE, "application/json")
             .header(ACCEPT, "application/json")
-            .send()?
-            .json::<Vec<CustomProperty>>()?;
+            .send()
+            .await?
+            .json::<Vec<CustomProperty>>()
+            .await?;
 
         debug!("Reading custom properties for asset: {}", asset.id);
 
@@ -198,30 +152,28 @@ fn get_asset_custom_properties(
     Ok(())
 }
 
-fn get_asset_sensors(
+async fn get_asset_sensors(
     config: &AppConfig,
     asset_list: &mut Vec<BasicAsset>,
     sensor_name: String,
-) -> Result<()> {
-    // Get Authorization header for request
-    let auth_header = get_auth_header(config)?;
-
-    // Start http client
-    let req = reqwest::blocking::Client::new();
-
+    http_client: &Client,
+    auth_header: &String,
+) -> anyhow::Result<()> {
     for asset in asset_list {
         // format target
         let target_url = format!("{}{}/{}", config.instance_url, ASSET_SENSORS, asset.id);
         debug!("Request URL: {:?}", target_url);
 
         // Get response
-        let resp = req
+        let resp = http_client
             .get(target_url)
-            .header(AUTHORIZATION, auth_header.clone())
+            .header(AUTHORIZATION, auth_header)
             .header(CONTENT_TYPE, "application/json")
             .header(ACCEPT, "application/json")
-            .send()?
-            .json::<Vec<Value>>()?;
+            .send()
+            .await?
+            .json::<Vec<Value>>()
+            .await?;
 
         for sensor in resp.iter() {
             let is_numeric = sensor["isNumeric"].as_bool().unwrap();
@@ -250,18 +202,27 @@ fn get_asset_sensors(
     Ok(())
 }
 
-fn get_numeric_sensor_monthly_summary(
+async fn get_numeric_sensor_monthly_summary(
     config: &AppConfig,
     asset_list: &mut Vec<BasicAsset>,
     year: i32,
     month: u32,
-) -> Result<Vec<NumericSensorResponse>> {
+    http_client: &Client,
+    auth_header: &String,
+) -> anyhow::Result<Vec<NumericSensorResponse>> {
+    // format target
+    let target_url = format!(
+        "{}{}",
+        config.instance_url, ASSET_NUMERIC_SENSOR_DAILY_SUMMARY
+    );
+    debug!("Request URL: {:?}", target_url);
+
+    let mut sensor_data: Vec<NumericSensorResponse> = Vec::new();
+
     let chunk = 100;
     let mut done = false;
     let mut start = 0;
     let mut end = chunk;
-
-    let mut sensor_data: Vec<NumericSensorResponse> = Vec::new();
 
     loop {
         if end > asset_list.len() {
@@ -287,28 +248,17 @@ fn get_numeric_sensor_monthly_summary(
         query.push(("endTime", &end_time));
         trace!("{:#?}", query);
 
-        // Get Authorization header for request
-        let auth_header = get_auth_header(config)?;
-
-        // format target
-        let target_url = format!(
-            "{}{}",
-            config.instance_url, ASSET_NUMERIC_SENSOR_DAILY_SUMMARY
-        );
-        debug!("Request URL: {:?}", target_url);
-
-        // Start http client
-        let req = reqwest::blocking::Client::new();
-
         // Get response
-        let mut resp = req
-            .get(target_url.clone())
+        let mut resp = http_client
+            .get(&target_url)
             .header(AUTHORIZATION, auth_header)
             .header(CONTENT_TYPE, "application/json")
             .header(ACCEPT, "application/json")
             .query(&query)
-            .send()?
-            .json::<Vec<NumericSensorResponse>>()?;
+            .send()
+            .await?
+            .json::<Vec<NumericSensorResponse>>()
+            .await?;
 
         sensor_data.append(&mut resp);
 
@@ -334,16 +284,14 @@ fn map_sensor_data_to_asset(
                 .filter(|s| s.sensor_id == *sensor_id)
                 .collect();
 
-            // only one response is expected
-            // TODO: refactor to return Err if the number of returned results is unexpected
-            if !numeric_sensor_response.is_empty() {
-                asset.sensor_data_points = numeric_sensor_response[0].sensor_data_points.clone();
+            if let Some(sensor_data) = numeric_sensor_response.first() {
+                asset.sensor_data_points = sensor_data.sensor_data_points.clone();
             }
         }
     }
 }
 
-fn get_next_date(year: i32, month: u32) -> Result<NaiveDate> {
+fn get_next_date(year: i32, month: u32) -> anyhow::Result<NaiveDate> {
     if let Some(_start) = NaiveDate::from_ymd_opt(year, month, 1) {
         let e_year = match month {
             12 => year + 1,
