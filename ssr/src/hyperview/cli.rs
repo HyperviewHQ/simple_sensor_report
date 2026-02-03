@@ -146,7 +146,7 @@ pub fn write_output(filename: String, asset_list: Vec<BasicAsset>) -> Result<()>
         };
 
         for reading in asset.sensor_data_points {
-            debug!("{:?}", reading);
+            debug!("{reading:?}");
 
             writer.serialize(SensorReadingRow {
                 asset_name: asset.name.clone(),

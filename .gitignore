@@ -49,7 +49,7 @@ Thumbs.db
 *.wmv
 
 # Cargo
-Cargo.lock
+#Cargo.lock
 
 # Hyperview Related
 **/client_credential.json

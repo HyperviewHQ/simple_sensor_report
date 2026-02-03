@@ -31,7 +31,7 @@ pub async fn get_asset_list(
 
     // format target
     let target_url = format!("{}{}", config.instance_url, ASSET_API_PREFIX);
-    debug!("Request URL: {:?}", target_url);
+    debug!("Request URL: {target_url}");
 
     // Get response
     let resp = http_client
@@ -51,21 +51,21 @@ pub async fn get_asset_list(
     if let Some(metadata) = &resp.get("_metadata") {
         total = metadata["total"].as_u64().unwrap();
         limit = metadata["limit"].as_u64().unwrap();
-        info!("\nMeta Data:\n| total: {} | limit: {} |\n", total, limit);
+        info!("\nMeta Data:\n| total: {total} | limit: {limit} |\n");
     }
 
     let end = if limit < total {
-        limit as usize
+        usize::try_from(limit)?
     } else {
-        total as usize
+        usize::try_from(total)?
     };
-    debug!("End: {}", end);
+    debug!("End: {end}");
 
     if let Some(assets) = &resp.get("data") {
         for i in 0..end {
             let id = assets[i]["id"].as_str().unwrap().to_string();
             let name = assets[i]["name"].as_str().unwrap().to_string();
-            debug!("id: {}, name: {}", id, name);
+            debug!("id: {id}, name: {name}");
 
             basic_assets.push(BasicAsset {
                 id,
@@ -73,7 +73,7 @@ pub async fn get_asset_list(
                 ..Default::default()
             });
         }
-    };
+    }
 
     let throttle = time::Duration::from_millis(100);
     thread::sleep(throttle);
@@ -124,7 +124,7 @@ async fn get_asset_custom_properties(
             "{}{}/{}",
             config.instance_url, ASSET_CUSTOM_PROPERTIES, asset.id
         );
-        debug!("Request URL: {:?}", target_url);
+        debug!("Request URL: {target_url}");
 
         // Get response
         let resp = http_client
@@ -139,7 +139,7 @@ async fn get_asset_custom_properties(
 
         debug!("Reading custom properties for asset: {}", asset.id);
 
-        for prop in resp.iter() {
+        for prop in &resp {
             if prop.name.trim().to_lowercase() == custom_property.trim().to_lowercase() {
                 asset.custom_property = Some(prop.value.clone());
             }
@@ -162,7 +162,7 @@ async fn get_asset_sensors(
     for asset in asset_list {
         // format target
         let target_url = format!("{}{}/{}", config.instance_url, ASSET_SENSORS, asset.id);
-        debug!("Request URL: {:?}", target_url);
+        debug!("Request URL: {target_url}");
 
         // Get response
         let resp = http_client
@@ -175,7 +175,7 @@ async fn get_asset_sensors(
             .json::<Vec<Value>>()
             .await?;
 
-        for sensor in resp.iter() {
+        for sensor in &resp {
             let is_numeric = sensor["isNumeric"].as_bool().unwrap();
             let name = sensor["name"].as_str().unwrap().to_string();
             let id = sensor["id"].as_str().unwrap().to_string();
@@ -204,7 +204,7 @@ async fn get_asset_sensors(
 
 async fn get_numeric_sensor_monthly_summary(
     config: &AppConfig,
-    asset_list: &mut Vec<BasicAsset>,
+    asset_list: &mut [BasicAsset],
     year: i32,
     month: u32,
     http_client: &Client,
@@ -215,7 +215,7 @@ async fn get_numeric_sensor_monthly_summary(
         "{}{}",
         config.instance_url, ASSET_NUMERIC_SENSOR_DAILY_SUMMARY
     );
-    debug!("Request URL: {:?}", target_url);
+    debug!("Request URL: {target_url}");
 
     let mut sensor_data: Vec<NumericSensorResponse> = Vec::new();
 
@@ -230,7 +230,7 @@ async fn get_numeric_sensor_monthly_summary(
             done = true;
         }
 
-        debug!("Fetching sensor chunk: {} -> {}", start, end);
+        debug!("Fetching sensor chunk: {start} -> {end}");
 
         let mut query: Vec<(&str, &str)> = Vec::new();
 
@@ -241,12 +241,12 @@ async fn get_numeric_sensor_monthly_summary(
         }
 
         let period_end = get_next_date(year, month)?;
-        let start_time = format!("{}-{}-1T00:00:00.000", year, month);
+        let start_time = format!("{year}-{month}-1T00:00:00.000");
         let end_time = format!("{}T00:00:00.000", period_end.format("%Y-%m-%d"));
 
         query.push(("startTime", &start_time));
         query.push(("endTime", &end_time));
-        trace!("{:#?}", query);
+        trace!("{query:#?}");
 
         // Get response
         let mut resp = http_client
