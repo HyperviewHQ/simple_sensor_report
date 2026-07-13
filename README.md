@@ -1,3 +1,6 @@
+> **Important**
+> This tool is **deprecated**. It's functionality has been moved to the [Hyperview Command Line Interface / HVCLI](https://github.com/HyperviewHQ/hvcli)
+
 # Simple Sensor Report (SSR)
 SSR is a sensor data download tool for Hyperview. It allows users to download monthly summary data for one sensor and one asset type. For example, you could use this tool to get energy metering reports for racks. 
 
@@ -5,7 +8,7 @@ SSR is a sensor data download tool for Hyperview. It allows users to download mo
 $ ssr -t Rack -s averageKwhByHour -m 2 -y 2023 -c "Business Unit" -f ./kwh_rack_report_2023_2.csv
 ```
 
-SSR has various command line options.
+SSR has various command-line options.
 
 ```console
 $ ./ssr --help
