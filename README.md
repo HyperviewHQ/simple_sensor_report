@@ -1,5 +1,5 @@
 > **Important**
-> This tool is **deprecated**. It's functionality has been moved to the [Hyperview Command Line Interface / HVCLI](https://github.com/HyperviewHQ/hvcli)
+> This tool is **deprecated**. Its functionality has been moved to the [Hyperview Command Line Interface / HVCLI](https://github.com/HyperviewHQ/hvcli)
 
 # Simple Sensor Report (SSR)
 SSR is a sensor data download tool for Hyperview. It allows users to download monthly summary data for one sensor and one asset type. For example, you could use this tool to get energy metering reports for racks. 
