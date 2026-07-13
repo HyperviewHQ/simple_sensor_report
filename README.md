@@ -1,4 +1,4 @@
-> **Important**
+> [!IMPORTANT]
 > This tool is **deprecated**. Its functionality has been moved to the [Hyperview Command Line Interface / HVCLI](https://github.com/HyperviewHQ/hvcli)
 
 # Simple Sensor Report (SSR)
